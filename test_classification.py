@@ -11,6 +11,7 @@ import logging
 from tqdm import tqdm
 import sys
 import importlib
+import torch.nn as nn
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
@@ -98,11 +99,11 @@ def main(args):
     model_name = os.listdir(experiment_dir + '/logs')[0].split('.')[0]
     model = importlib.import_module(model_name)
 
-    classifier = model.get_model(num_class, normal_channel=args.use_normals)
+    classifier = nn.DataParallel(model.get_model(num_class, normal_channel=args.use_normals))
     if not args.use_cpu:
         classifier = classifier.cuda()
 
-    checkpoint = torch.load(str(experiment_dir) + '/checkpoints/best_model.pth')
+    checkpoint = torch.load(str(experiment_dir) + '/checkpoints/best_model.pth', weights_only=False)
     classifier.load_state_dict(checkpoint['model_state_dict'])
 
     with torch.no_grad():
