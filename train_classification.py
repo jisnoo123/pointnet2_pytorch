@@ -167,6 +167,7 @@ def main(args):
     best_class_acc = 0.0
 
     '''TRANING'''
+    
     logger.info('Start training...')
     for epoch in range(start_epoch, args.epoch):
         log_string('Epoch %d (%d/%s):' % (global_epoch + 1, epoch + 1, args.epoch))
