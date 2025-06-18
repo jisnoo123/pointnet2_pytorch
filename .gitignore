@@ -112,3 +112,11 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+
+# Dataset
+data
+modelnet-normal-resampled.zip
+
+# My shell script to run train_classifer
+train_classification.sh
