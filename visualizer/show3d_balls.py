@@ -105,6 +105,7 @@ def showpoints(xyz, c_gt=None, c_pred=None, waittime=0, showrot=False, magnifyBl
                         cv2.cv.CV_RGB(255, 0, 0))
             cv2.putText(show, 'zoom %d%%' % (int(zoom * 100)), (30, showsz - 70), 0, 0.5, cv2.cv.CV_RGB(255, 0, 0))
 
+
     changed = True
     while True:
         if changed:
