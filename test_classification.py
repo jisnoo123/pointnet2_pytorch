@@ -151,11 +151,229 @@ def plot_confusion_matrix(y_true, y_pred, model_ckp):
     plt.show()
 
 
-def plot_umap_fc2(model, test_loader, device='cuda'):
-    print('Plotting UMAP')
-    """Plot UMAP of fc2 layer activations"""
+# def plot_umap_fc2(model, test_loader, device='cuda'):
+#     print('Plotting UMAP')
+#     """Plot UMAP of fc2 layer activations"""
     
-    # ModelNet40 class names in order
+#     # ModelNet40 class names in order
+#     class_names = [
+#         'airplane', 'bathtub', 'bed', 'bench', 'bookshelf', 'bottle', 'bowl', 'car', 'chair', 'cone',
+#         'cup', 'curtain', 'desk', 'door', 'dresser', 'flower_pot', 'glass_box', 'guitar', 'keyboard', 'lamp',
+#         'laptop', 'mantel', 'monitor', 'night_stand', 'person', 'piano', 'plant', 'radio', 'range_hood', 'sink',
+#         'sofa', 'stairs', 'stool', 'table', 'tent', 'toilet', 'tv_stand', 'vase', 'wardrobe', 'xbox'
+#     ]
+    
+#     # Storage for activations and labels
+#     activations = []
+#     labels = []
+    
+#     # Hook function to capture fc2 output
+#     def hook_fn(module, input, output):
+#         activations.append(output.detach().cpu().numpy())
+    
+#     # Register hook on fc2 layer (handle DataParallel)
+#     fc2_layer = model.module.fc2 if hasattr(model, 'module') else model.fc2
+#     hook = fc2_layer.register_forward_hook(hook_fn)
+    
+#     model.eval()
+#     with torch.no_grad():
+#         for fn, points, target in test_loader:
+#             points = points.to(device)
+#             points = points.transpose(2, 1)
+#             model(points)
+#             labels.extend(target.numpy())
+    
+#     # Remove hook
+#     hook.remove()
+    
+#     # Concatenate all activations
+#     activations = np.concatenate(activations, axis=0)
+#     labels = np.array(labels)
+
+#     umap_folder = 'log/classification/pointnet2_cls_ssg/umap'
+#     os.makedirs(umap_folder, exist_ok=True)
+
+    
+#     umap_model = UMAP(n_components=2, random_state=42, metric='manhattan', n_neighbors=5, min_dist=0.5)
+#     # Best n_components=2, random_state=42, metric='euclidean', n_neighbors=6, min_dist=0.5
+#     embedding = umap_model.fit_transform(activations)
+    
+#     # Plot
+#     plt.figure(figsize=(15, 10))
+#     scatter = plt.scatter(embedding[:, 0], embedding[:, 1], c=labels, cmap='tab20', s=20)
+    
+#     # Create legend with class names
+#     handles = []
+#     for i in range(len(class_names)):
+#         if i in labels:  # Only show classes that exist in the data
+#             handles.append(plt.Line2D([0], [0], marker='o', color='w', 
+#                                     markerfacecolor=plt.cm.tab20(i/len(class_names)), 
+#                                     markersize=8, label=class_names[i]))
+    
+#     plt.legend(handles=handles, bbox_to_anchor=(1.05, 1), loc='upper left')
+#     plt.title('UMAP of FC2 Layer Activations - ModelNet40', fontsize=16)
+#     plt.xlabel('UMAP 1', fontsize=16)
+#     plt.ylabel('UMAP 2', fontsize=16)
+#     plt.tight_layout()
+#     plt.savefig(umap_folder + f'/umap_nb_5_comp_2_met_manhattan_mindist_0.5.png', dpi=300, bbox_inches='tight', facecolor='white')
+#     plt.show()
+
+#     print('UMAP plot saved')
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+from matplotlib.colors import ListedColormap
+import numpy as np
+import seaborn as sns
+from umap import UMAP
+import torch
+import os
+
+# def plot_umap_fc2(model, test_loader, device='cuda'):
+#     """Plot publication-quality UMAP of fc2 layer activations"""
+#     print('Plotting UMAP')
+    
+#     # ModelNet40 class names in order
+#     class_names = [
+#         'airplane', 'bathtub', 'bed', 'bench', 'bookshelf', 'bottle', 'bowl', 'car', 'chair', 'cone',
+#         'cup', 'curtain', 'desk', 'door', 'dresser', 'flower_pot', 'glass_box', 'guitar', 'keyboard', 'lamp',
+#         'laptop', 'mantel', 'monitor', 'night_stand', 'person', 'piano', 'plant', 'radio', 'range_hood', 'sink',
+#         'sofa', 'stairs', 'stool', 'table', 'tent', 'toilet', 'tv_stand', 'vase', 'wardrobe', 'xbox'
+#     ]
+    
+#     # Storage for activations and labels
+#     activations = []
+#     labels = []
+    
+#     # Hook function to capture fc2 output
+#     def hook_fn(module, input, output):
+#         activations.append(output.detach().cpu().numpy())
+    
+#     # Register hook on fc2 layer (handle DataParallel)
+#     fc2_layer = model.module.fc2 if hasattr(model, 'module') else model.fc2
+#     hook = fc2_layer.register_forward_hook(hook_fn)
+    
+#     model.eval()
+#     with torch.no_grad():
+#         for fn, points, target in test_loader:
+#             points = points.to(device)
+#             points = points.transpose(2, 1)
+#             model(points)
+#             labels.extend(target.numpy())
+    
+#     # Remove hook
+#     hook.remove()
+    
+#     # Concatenate all activations
+#     activations = np.concatenate(activations, axis=0)
+#     labels = np.array(labels)
+    
+#     # Create output directory
+#     umap_folder = 'log/classification/pointnet2_cls_ssg/umap'
+#     os.makedirs(umap_folder, exist_ok=True)
+    
+#     # UMAP embedding
+#     umap_model = UMAP(n_components=2, random_state=42, metric='manhattan', 
+#                      n_neighbors=5, min_dist=0.5)
+#     embedding = umap_model.fit_transform(activations)
+    
+#     # Set publication style
+#     plt.style.use('default')
+#     sns.set_palette("husl")
+    
+#     # Create figure with proper aspect ratio for publication
+#     fig, ax = plt.subplots(figsize=(12, 10), dpi=300)
+    
+#     # Generate distinct colors for all classes
+#     colors = plt.cm.tab20(np.linspace(0, 1, len(class_names)))
+    
+#     # Create scatter plot with improved aesthetics
+#     unique_labels = np.unique(labels)
+#     for i, label in enumerate(unique_labels):
+#         mask = labels == label
+#         ax.scatter(embedding[mask, 0], embedding[mask, 1], 
+#                   c=[colors[label]], s=25, alpha=0.7, 
+#                   edgecolors='white', linewidth=0.3,
+#                   label=class_names[label])
+    
+#     # Improve plot appearance
+#     ax.set_aspect('equal')
+#     ax.grid(True, alpha=0.3, linestyle='-', linewidth=0.5)
+#     ax.set_axisbelow(True)
+    
+#     # Professional styling
+#     ax.spines['top'].set_visible(False)
+#     ax.spines['right'].set_visible(False)
+#     ax.spines['left'].set_linewidth(1.5)
+#     ax.spines['bottom'].set_linewidth(1.5)
+    
+#     # Labels and title with proper font sizes for publication
+#     ax.set_xlabel('UMAP Dimension 1', fontsize=18, fontweight='bold')
+#     ax.set_ylabel('UMAP Dimension 2', fontsize=18, fontweight='bold')
+#     ax.set_title('UMAP Visualization of FC2 Layer Activations\nModelNet40 Dataset', 
+#                 fontsize=16, fontweight='bold', pad=20)
+    
+#     # Tick parameters
+#     ax.tick_params(axis='both', which='major', labelsize=12, width=1.5)
+#     ax.tick_params(axis='both', which='minor', labelsize=10, width=1)
+    
+#     # Create legend with better formatting
+#     # Group similar classes for better legend organization
+#     handles, legend_labels = ax.get_legend_handles_labels()
+    
+#     # Sort legend entries alphabetically for consistency
+#     sorted_pairs = sorted(zip(legend_labels, handles))
+#     legend_labels, handles = zip(*sorted_pairs)
+    
+#     # Create multi-column legend outside the plot
+#     legend = ax.legend(handles, legend_labels, 
+#                       bbox_to_anchor=(1.05, 1), loc='upper left',
+#                       ncol=1, fontsize=10, frameon=True, 
+#                       fancybox=True, shadow=True, framealpha=0.9)
+#     legend.get_frame().set_facecolor('white')
+#     legend.get_frame().set_edgecolor('gray')
+#     legend.get_frame().set_linewidth(1)
+    
+#     # Add statistics text box
+#     n_samples = len(labels)
+#     n_classes = len(unique_labels)
+#     stats_text = f'Samples: {n_samples:,}\nClasses: {n_classes}\nMetric: Manhattan\nNeighbors: 5'
+    
+#     props = dict(boxstyle='round', facecolor='lightgray', alpha=0.8)
+#     ax.text(0.02, 0.98, stats_text, transform=ax.transAxes, fontsize=10,
+#             verticalalignment='top', bbox=props)
+    
+#     plt.tight_layout()
+    
+#     # Save with multiple formats for publication
+#     base_filename = 'umap_fc2_professional'
+    
+#     # High-resolution PNG
+#     plt.savefig(f'{umap_folder}/{base_filename}.png', 
+#                 dpi=300, bbox_inches='tight', facecolor='white', 
+#                 edgecolor='none', format='png')
+    
+#     # Vector format for scalability
+#     plt.savefig(f'{umap_folder}/{base_filename}.pdf', 
+#                 bbox_inches='tight', facecolor='white', 
+#                 edgecolor='none', format='pdf')
+    
+#     # EPS format for some journals
+#     plt.savefig(f'{umap_folder}/{base_filename}.eps', 
+#                 bbox_inches='tight', facecolor='white', 
+#                 edgecolor='none', format='eps')
+    
+#     plt.show()
+#     print(f'Professional UMAP plots saved in multiple formats to {umap_folder}')
+#     print(f'- PNG: {base_filename}.png (300 DPI)')
+#     print(f'- PDF: {base_filename}.pdf (vector)')
+#     print(f'- EPS: {base_filename}.eps (vector)')
+
+
+def plot_umap_fc2(model, test_loader, device='cuda'):
+    """Alternative layout with legend at bottom for publication-ready plots"""
+    print('Plotting UMAP (compact layout)')
+    
+    # ModelNet40 class names
     class_names = [
         'airplane', 'bathtub', 'bed', 'bench', 'bookshelf', 'bottle', 'bowl', 'car', 'chair', 'cone',
         'cup', 'curtain', 'desk', 'door', 'dresser', 'flower_pot', 'glass_box', 'guitar', 'keyboard', 'lamp',
@@ -163,15 +381,13 @@ def plot_umap_fc2(model, test_loader, device='cuda'):
         'sofa', 'stairs', 'stool', 'table', 'tent', 'toilet', 'tv_stand', 'vase', 'wardrobe', 'xbox'
     ]
     
-    # Storage for activations and labels
+    # Data collection
     activations = []
     labels = []
     
-    # Hook function to capture fc2 output
     def hook_fn(module, input, output):
         activations.append(output.detach().cpu().numpy())
     
-    # Register hook on fc2 layer (handle DataParallel)
     fc2_layer = model.module.fc2 if hasattr(model, 'module') else model.fc2
     hook = fc2_layer.register_forward_hook(hook_fn)
     
@@ -183,52 +399,66 @@ def plot_umap_fc2(model, test_loader, device='cuda'):
             model(points)
             labels.extend(target.numpy())
     
-    # Remove hook
     hook.remove()
-    
-    # Concatenate all activations
     activations = np.concatenate(activations, axis=0)
     labels = np.array(labels)
     
-    # Apply UMAP
-    n_components_list = [2,3,4,5,6,7,8,9]
-    metric_list = ['euclidean', 'manhattan', 'chebyshev', 'minkowski']
-    min_dist = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
-    n_neighbors_list = [2, 3, 4, 5, 6, 7, 8, 9]
-
+    # UMAP embedding
     umap_folder = 'log/classification/pointnet2_cls_ssg/umap'
     os.makedirs(umap_folder, exist_ok=True)
-
-    for c in n_components_list:
-        for m in metric_list:
-            for md in min_dist:
-                for nb in n_neighbors_list:
-                    umap_model = UMAP(n_components=c, random_state=42, metric=m, n_neighbors=nb, min_dist=md)
-                    # Best n_components=2, random_state=42, metric='euclidean', n_neighbors=6, min_dist=0.5
-                    embedding = umap_model.fit_transform(activations)
-                    
-                    # Plot
-                    plt.figure(figsize=(15, 10))
-                    scatter = plt.scatter(embedding[:, 0], embedding[:, 1], c=labels, cmap='tab20', s=20)
-                    
-                    # Create legend with class names
-                    handles = []
-                    for i in range(len(class_names)):
-                        if i in labels:  # Only show classes that exist in the data
-                            handles.append(plt.Line2D([0], [0], marker='o', color='w', 
-                                                    markerfacecolor=plt.cm.tab20(i/len(class_names)), 
-                                                    markersize=8, label=class_names[i]))
-                    
-                    plt.legend(handles=handles, bbox_to_anchor=(1.05, 1), loc='upper left')
-                    plt.title('UMAP of FC2 Layer Activations - ModelNet40', fontsize=10)
-                    plt.xlabel('UMAP 1', fontsize=10)
-                    plt.ylabel('UMAP 2', fontsize=10)
-                    plt.tight_layout()
-                    plt.savefig(umap_folder + f'/umap_nb_{nb}_comp_{c}_met_{m}_mindist_{md}.png', dpi=300, bbox_inches='tight', facecolor='white')
-                    plt.show()
-
-    print('UMAP plot saved')
-
+    
+    umap_model = UMAP(n_components=2, random_state=42, metric='manhattan', 
+                     n_neighbors=5, min_dist=0.5)
+    embedding = umap_model.fit_transform(activations)
+    
+    # Create figure with extra height for bottom legend
+    fig, ax = plt.subplots(figsize=(10.5, 12), dpi=300)
+    
+    colors = plt.cm.Set3(np.linspace(0, 1, len(class_names)))
+    
+    unique_labels = np.unique(labels)
+    for i, label in enumerate(unique_labels):
+        mask = labels == label
+        ax.scatter(embedding[mask, 0], embedding[mask, 1], 
+                  c=[colors[label]], s=20, alpha=0.8, 
+                  edgecolors='black', linewidth=0.2,
+                  label=class_names[label])
+    
+    ax.set_aspect('equal')
+    ax.grid(True, alpha=0.2)
+    
+    # Consistent font size of 12 for all text elements
+    ax.set_xlabel('UMAP Dimension 1', fontsize=18, fontweight='bold')
+    ax.set_ylabel('UMAP Dimension 2', fontsize=18, fontweight='bold')
+    ax.set_title('UMAP of FC2 Activations - ModelNet40', fontsize=18, fontweight='bold', pad=20)
+    ax.tick_params(axis='both', which='major', labelsize=18)
+    
+    # Legend positioned at bottom with optimal columns
+    handles, legend_labels = ax.get_legend_handles_labels()
+    sorted_pairs = sorted(zip(legend_labels, handles))
+    legend_labels, handles = zip(*sorted_pairs)
+    
+    # Calculate optimal number of columns (10 columns for 40 classes = 4 rows)
+    ncol = 4
+    legend = ax.legend(handles, legend_labels, 
+                      bbox_to_anchor=(0.5, -0.15), loc='upper center',
+                      ncol=ncol, fontsize=18, frameon=True, 
+                      fancybox=True, shadow=False, framealpha=0.9,
+                      columnspacing=1.0, handletextpad=0.5)
+    
+    # Style the legend frame
+    legend.get_frame().set_facecolor('white')
+    legend.get_frame().set_edgecolor('gray')
+    legend.get_frame().set_linewidth(0.5)
+    
+    plt.tight_layout()
+    plt.savefig(f'{umap_folder}/umap_fc2_compact.png', 
+                dpi=300, bbox_inches='tight', facecolor='white')
+    plt.savefig(f'{umap_folder}/umap_fc2_compact.pdf', 
+                bbox_inches='tight', facecolor='white')
+    
+    plt.show()
+    print('Compact UMAP plot saved')
 
 
 def main(args):
@@ -277,7 +507,7 @@ def main(args):
     
     with torch.no_grad():
         instance_acc, class_acc = test(classifier.eval(), testDataLoader, vote_num=args.num_votes, num_class=num_class)
-        # plot_confusion_matrix(y_true, y_pred, model_ckp)
+        plot_confusion_matrix(y_true, y_pred, model_ckp)
         log_string('Test Instance Accuracy: %f, Class Accuracy: %f' % (instance_acc, class_acc))
 
 
@@ -290,7 +520,7 @@ def main(args):
     #         # Dump test: y_true and scores
     #         f.write("{} {}\n".format(y_true[i], y_pred_scores[i]))
 
-    # plot_umap_fc2(classifier, testDataLoader)
+    plot_umap_fc2(classifier, testDataLoader)
 
 
 if __name__ == '__main__':
