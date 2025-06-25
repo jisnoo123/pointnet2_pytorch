@@ -414,13 +414,16 @@ def plot_umap_fc2(model, test_loader, device='cuda'):
     # Create figure with extra height for bottom legend
     fig, ax = plt.subplots(figsize=(10.5, 12), dpi=300)
     
-    colors = plt.cm.Set3(np.linspace(0, 1, len(class_names)))
+    colors = ['#FF1493', '#00CED1', '#FF4500', '#32CD32', '#8A2BE2', '#FF6347', '#00FA9A', '#4169E1', '#FF69B4', '#00FF7F',
+          '#9370DB', '#FFD700', '#20B2AA', '#DC143C', '#7FFF00', '#1E90FF', '#FF8C00', '#ADFF2F', '#8B008B', '#FF1493',
+          '#00BFFF', '#FFA500', '#98FB98', '#6A5ACD', '#FF6B6B', '#40E0D0', '#FF7F50', '#90EE90', '#DA70D6', '#F0E68C',
+          '#87CEEB', '#DDA0DD', '#F4A460', '#E6E6FA', '#FFB6C1', '#B0E0E6', '#FAFAD2', '#D8BFD8', '#F5DEB3', '#E0FFFF']
     
     unique_labels = np.unique(labels)
     for i, label in enumerate(unique_labels):
         mask = labels == label
         ax.scatter(embedding[mask, 0], embedding[mask, 1], 
-                  c=[colors[label]], s=20, alpha=0.8, 
+                  c=[colors[label]], s=20, alpha=0.90, 
                   edgecolors='black', linewidth=0.2,
                   label=class_names[label])
     
