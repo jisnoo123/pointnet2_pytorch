@@ -118,5 +118,6 @@ dmypy.json
 data
 modelnet-normal-resampled.zip
 
-# My shell script to run train_classifer
-train_classification.sh
+log/classification/pointnet2_cls_ssg/dumped
+log/classification/pointnet2_cls_ssg/inference
+log/classification/pointnet2_cls_ssg/checkpoints

@@ -61,7 +61,12 @@ class ModelNetDataLoader(Dataset):
             self.catfile = os.path.join(self.root, 'modelnet40_shape_names.txt')
 
         self.cat = [line.rstrip() for line in open(self.catfile)]
+
+        # classes contain a dictionary of categories with the number assigned to them
         self.classes = dict(zip(self.cat, range(len(self.cat))))
+
+        # with open('modelnet40_category_numbered', 'wb') as f:
+        #     pickle.dump(self.classes, f)
 
         shape_ids = {}
         if self.num_category == 10:
@@ -73,14 +78,21 @@ class ModelNetDataLoader(Dataset):
 
         assert (split == 'train' or split == 'test')
         shape_names = ['_'.join(x.split('_')[0:-1]) for x in shape_ids[split]]
+        
+        # datapath contains a list of tuples: (category, path_to_model) eg:  ('xbox', 'data/modelnet40_normal_resampled/xbox/xbox_0100.txt'), ('xbox', 'data/modelnet40_normal_resampled/xbox/xbox_0101.txt')
         self.datapath = [(shape_names[i], os.path.join(self.root, shape_names[i], shape_ids[split][i]) + '.txt') for i
                          in range(len(shape_ids[split]))]
+        
         print('The size of %s data is %d' % (split, len(self.datapath)))
 
         if self.uniform:
             self.save_path = os.path.join(root, 'modelnet%d_%s_%dpts_fps.dat' % (self.num_category, split, self.npoints))
         else:
             self.save_path = os.path.join(root, 'modelnet%d_%s_%dpts.dat' % (self.num_category, split, self.npoints))
+
+        self.path_to_files = list()
+        for i in range(len(self.datapath)):
+            self.path_to_files.append(self.datapath[i][1])
 
         if self.process_data:
             if not os.path.exists(self.save_path):
@@ -90,20 +102,25 @@ class ModelNetDataLoader(Dataset):
 
                 for index in tqdm(range(len(self.datapath)), total=len(self.datapath)):
                     fn = self.datapath[index]
-                    cls = self.classes[self.datapath[index][0]]
+                    cls = self.classes[self.datapath[index][0]] # Contains the number assigned to the category of the model
                     cls = np.array([cls]).astype(np.int32)
+                    
+                    # point_set contains the points in the text file (the coordinates)
                     point_set = np.loadtxt(fn[1], delimiter=',').astype(np.float32)
 
                     if self.uniform:
                         point_set = farthest_point_sample(point_set, self.npoints)
                     else:
                         point_set = point_set[0:self.npoints, :]
-
+                    
                     self.list_of_points[index] = point_set
                     self.list_of_labels[index] = cls
 
+                    # self.path_to_files.append(fn[1])
+                
                 with open(self.save_path, 'wb') as f:
                     pickle.dump([self.list_of_points, self.list_of_labels], f)
+
             else:
                 print('Load processed data from %s...' % self.save_path)
                 with open(self.save_path, 'rb') as f:
@@ -114,23 +131,24 @@ class ModelNetDataLoader(Dataset):
 
     def _get_item(self, index):
         if self.process_data:
-            point_set, label = self.list_of_points[index], self.list_of_labels[index]
+            fn, point_set, label = self.path_to_files[index], self.list_of_points[index], self.list_of_labels[index]
         else:
-            fn = self.datapath[index]
+            fn = self.path_to_files[index]
             cls = self.classes[self.datapath[index][0]]
             label = np.array([cls]).astype(np.int32)
-            point_set = np.loadtxt(fn[1], delimiter=',').astype(np.float32)
+            point_set = np.loadtxt(fn, delimiter=',').astype(np.float32)
 
             if self.uniform:
                 point_set = farthest_point_sample(point_set, self.npoints)
             else:
                 point_set = point_set[0:self.npoints, :]
-                
+        
         point_set[:, 0:3] = pc_normalize(point_set[:, 0:3])
         if not self.use_normals:
             point_set = point_set[:, 0:3]
 
-        return point_set, label[0]
+        # Returns tuple of normalized points and the label
+        return self.path_to_files[index], point_set, label[0]
 
     def __getitem__(self, index):
         return self._get_item(index)

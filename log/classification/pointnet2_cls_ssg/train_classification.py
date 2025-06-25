@@ -7,7 +7,7 @@ import os
 import sys
 import torch
 import numpy as np
-
+import pickle
 import datetime
 import logging
 import provider
@@ -19,10 +19,20 @@ import torch.nn as nn
 from pathlib import Path
 from tqdm import tqdm
 from data_utils.ModelNetDataLoader import ModelNetDataLoader
+from sklearn.metrics import *
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
+
+# Load class numbers
+with open('data/modelnet40_category_numbered','rb') as f:
+    classes = pickle.load(f)
+
+def get_class_name(value):
+    for key,val in classes.items():
+        if val == value:
+            return key
 
 def parse_args():
     '''PARAMETERS'''
@@ -50,20 +60,42 @@ def inplace_relu(m):
         m.inplace=True
 
 
-def test(model, loader, num_class=40):
+def test(model, loader, epoch, n_epochs, num_class=40):
+    total_loss = 0
     mean_correct = []
     class_acc = np.zeros((num_class, 3))
     classifier = model.eval()
+    model_ = importlib.import_module(args.model)
+    criterion = model_.get_loss()
+    y_true_val = list()
+    y_pred_val = list()
 
-    for j, (points, target) in tqdm(enumerate(loader), total=len(loader)):
+    if not args.use_cpu:
+        classifier = classifier.cuda()
+        criterion = criterion.cuda()
+
+    for j, (fn, points, target) in tqdm(enumerate(loader), total=len(loader)):
 
         if not args.use_cpu:
             points, target = points.cuda(), target.cuda()
 
         points = points.transpose(2, 1)
-        pred, _ = classifier(points)
+        pred, trans_feat = classifier(points)
+        
+        loss = criterion(pred, target.long(), trans_feat)
+        loss = loss.cpu().numpy()
+        total_loss += loss
         pred_choice = pred.data.max(1)[1]
+        
+        pred_values = pred_choice.cpu().numpy()
+        true_values = target.cpu().numpy()
 
+        # Append the results to y_true_val and y_pred_val
+        for i in range(len(true_values)):
+            y_true_val.append(get_class_name(true_values[i]))
+            y_pred_val.append(get_class_name(pred_values[i]))
+        
+        
         for cat in np.unique(target.cpu()):
             classacc = pred_choice[target == cat].eq(target[target == cat].long().data).cpu().sum()
             class_acc[cat, 0] += classacc.item() / float(points[target == cat].size()[0])
@@ -72,10 +104,29 @@ def test(model, loader, num_class=40):
         correct = pred_choice.eq(target.long().data).cpu().sum()
         mean_correct.append(correct.item() / float(points.size()[0]))
 
+
     class_acc[:, 2] = class_acc[:, 0] / class_acc[:, 1]
     class_acc = np.mean(class_acc[:, 2])
     instance_acc = np.mean(mean_correct)
+    
+    # Dump important information for plotting
+    dump_folder = 'log/classification/pointnet2_cls_ssg/dumped/' + str(n_epochs) +'_epochs'
+    os.makedirs(dump_folder, exist_ok=True)
+    
+    # Calculate acc, rec and prec
+    acc_score = accuracy_score(y_true_val, y_pred_val)
+    rec_score = recall_score(y_true_val, y_pred_val, average='micro')
+    prec_score = precision_score(y_true_val, y_pred_val, average='micro')
 
+    # Dump acc, rec, prec 
+    with open(dump_folder + '/acc_rec_prec_val.txt', 'a') as f:
+        f.write("{} {} {} {}\n".format(epoch, acc_score, rec_score, prec_score))
+
+    # Dump train: iter vs loss
+    with open(dump_folder + '/val_loss.txt', 'a') as f:
+        f.write("{} {}\n".format(epoch, total_loss))
+        
+    print('Validation loss:', total_loss)
     return instance_acc, class_acc
 
 
@@ -169,12 +220,16 @@ def main(args):
     '''TRANING'''
     logger.info('Start training...')
     for epoch in range(start_epoch, args.epoch):
+        total_loss = 0
+        y_true = list()
+        y_pred = list()
+
         log_string('Epoch %d (%d/%s):' % (global_epoch + 1, epoch + 1, args.epoch))
         mean_correct = []
         classifier = classifier.train()
 
         scheduler.step()
-        for batch_id, (points, target) in tqdm(enumerate(trainDataLoader, 0), total=len(trainDataLoader), smoothing=0.9):
+        for batch_id, (fn, points, target) in tqdm(enumerate(trainDataLoader, 0), total=len(trainDataLoader), smoothing=0.9):
             optimizer.zero_grad()
 
             points = points.data.numpy()
@@ -189,6 +244,7 @@ def main(args):
 
             pred, trans_feat = classifier(points)
             loss = criterion(pred, target.long(), trans_feat)
+            total_loss += loss
             pred_choice = pred.data.max(1)[1]
 
             correct = pred_choice.eq(target.long().data).cpu().sum()
@@ -197,11 +253,37 @@ def main(args):
             optimizer.step()
             global_step += 1
 
+            pred_values = pred_choice.cpu().numpy()
+            true_values = target.cpu().numpy()
+
+            # Append the results to y_true and y_pred
+            for i in range(len(true_values)):
+                y_true.append(get_class_name(true_values[i]))
+                y_pred.append(get_class_name(pred_values[i]))
+        
+        # Dump important information for plotting
+        dump_folder = 'log/classification/pointnet2_cls_ssg/dumped/' + str(args.epoch) + '_epochs' 
+        os.makedirs(dump_folder, exist_ok=True)
+
+        # Dump train: iter vs loss
+        with open(dump_folder + '/train_loss.txt', 'a') as f:
+            f.write("{} {}\n".format(epoch, total_loss))
+
+        # Calculate acc, rec and prec
+        acc_score = accuracy_score(y_true, y_pred)
+        rec_score = recall_score(y_true, y_pred, average='micro')
+        prec_score = precision_score(y_true, y_pred, average='micro')
+
+        # Dump acc, rec, prec 
+        with open(dump_folder + '/acc_rec_prec_train.txt', 'a') as f:
+            f.write("{} {} {} {}\n".format(epoch, acc_score, rec_score, prec_score))
+
         train_instance_acc = np.mean(mean_correct)
         log_string('Train Instance Accuracy: %f' % train_instance_acc)
 
+
         with torch.no_grad():
-            instance_acc, class_acc = test(classifier.eval(), testDataLoader, num_class=num_class)
+            instance_acc, class_acc = test(classifier.eval(), testDataLoader, epoch, args.epoch, num_class=num_class)
 
             if (instance_acc >= best_instance_acc):
                 best_instance_acc = instance_acc
@@ -224,10 +306,44 @@ def main(args):
                     'optimizer_state_dict': optimizer.state_dict(),
                 }
                 torch.save(state, savepath)
-            global_epoch += 1
 
+            if epoch % 10 == 0:
+                # Save at every 10th epoch
+                save_path = str(checkpoints_dir)
+                state = {
+                        'epoch': epoch,
+                        'instance_acc': instance_acc,
+                        'class_acc': class_acc,
+                        'model_state_dict': classifier.state_dict(),
+                        'optimizer_state_dict': optimizer.state_dict(),
+                    }
+                torch.save(state, save_path + '/' + str(epoch) + '_epochs_model.pth')
+
+            global_epoch += 1
+    
     logger.info('End of training...')
 
+    # Copy the information of loss, rec, acc, prec to checkpoints
+    dump_folder = 'log/classification/pointnet2_cls_ssg/dumped/' + str(args.epoch) + '_epochs' 
+
+    epochs = args.epoch
+    epoch_list = list()
+    for i in range(1, int(epochs/10)):
+        epoch_list.append(i*10)
+
+    for epoch in epoch_list:
+        os.makedirs('log/classification/pointnet2_cls_ssg/dumped/' + str(epoch) + '_epochs', exist_ok=True)
+        dump_name = 'log/classification/pointnet2_cls_ssg/dumped/' + str(epoch) + '_epochs'
+
+        for info_files in os.listdir(dump_folder):
+            with open(dump_folder + '/' + info_files) as f:
+                lines = f.readlines()
+
+                for line_number in range(epoch):
+                    with open(dump_name + '/' + info_files, 'a') as f:
+                        f.write('{}'.format(lines[line_number]))
+    
+    print('Necessary information copied')
 
 if __name__ == '__main__':
     args = parse_args()
