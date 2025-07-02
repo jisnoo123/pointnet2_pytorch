@@ -19,7 +19,7 @@ import shutil
 from sklearn.metrics import confusion_matrix
 import seaborn as sns
 from umap import UMAP
-
+from sklearn.metrics import *
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ROOT_DIR = BASE_DIR
 sys.path.append(os.path.join(ROOT_DIR, 'models'))
@@ -122,6 +122,14 @@ def test(model, loader, num_class=40, vote_num=1):
                 os.makedirs(corr_cat_dir, exist_ok=True)
                 corr_fname = corr_cat_dir + '/' + str(j) + '_' + str(i) + '_pred_' + pred_cls_name + '_gt_' + true_cls_name + '.txt'
                 shutil.copyfile(fn[i], corr_fname)
+
+    acc_score = accuracy_score(y_true, y_pred)
+    rec_score = recall_score(y_true, y_pred, average='micro')
+    prec_score = precision_score(y_true, y_pred, average='micro')
+
+    print('Accuracy is:', acc_score)
+    print('Recall is:', rec_score)
+    print('Precision is:', prec_score)
 
     class_acc[:, 2] = class_acc[:, 0] / class_acc[:, 1]
     class_acc = np.mean(class_acc[:, 2])

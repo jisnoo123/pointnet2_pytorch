@@ -117,9 +117,9 @@ def plot_roc(file_path, save_path):
             plt.plot(fpr, tpr, label=f'{classes[i]} (AUC={roc_auc:.3f})')
 
     plt.plot([0, 1], [0, 1], 'k--', label='Random')
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
-    plt.title('ROC Curves - ModelNet40')
+    plt.xlabel('False Positive Rate', fontsize=18)
+    plt.ylabel('True Positive Rate', fontsize=18)
+    plt.title('ROC Curve on ModelNet40', fontsize=18)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=8)
     plt.tight_layout()
     plt.savefig(metrics_folder+'/roc.png')
